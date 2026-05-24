@@ -66,6 +66,7 @@ export type AxAIWebLLMChatRequest = {
   logprobs?: boolean;
   top_logprobs?: number;
   n?: number;
+  think?: boolean;
   tools?: Array<{
     type: 'function';
     function: {

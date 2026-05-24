@@ -16,6 +16,69 @@ import type {
   AxTokenUsage,
 } from '../types.js';
 
+/**
+ * Extracts <think>...</think> content from a full (non-streaming) response.
+ * Returns thought and cleaned content separately.
+ */
+function extractThinkTags(content: string): {
+  thought?: string;
+  content?: string;
+} {
+  const match = content.match(/^<think>([\s\S]*?)<\/think>\n?([\s\S]*)$/);
+  if (!match) return { content };
+  return {
+    thought: match[1] || undefined,
+    content: match[2] || undefined,
+  };
+}
+
+type WebLLMThinkStreamState = {
+  webllmInThink?: boolean;
+};
+
+/**
+ * Processes a streaming chunk, routing <think>...</think> content to the
+ * `thought` field and leaving the rest in `content`.
+ */
+function processThinkStreamChunk(
+  content: string | undefined,
+  state: WebLLMThinkStreamState
+): { content?: string; thought?: string } {
+  if (!content) return {};
+
+  if (!state.webllmInThink && !content.includes('<think>')) {
+    return { content };
+  }
+
+  let remaining = content;
+  let thoughtOut = '';
+  let contentOut = '';
+
+  if (!state.webllmInThink && remaining.includes('<think>')) {
+    const idx = remaining.indexOf('<think>');
+    contentOut += remaining.slice(0, idx);
+    remaining = remaining.slice(idx + '<think>'.length);
+    state.webllmInThink = true;
+  }
+
+  if (state.webllmInThink) {
+    if (remaining.includes('</think>')) {
+      const idx = remaining.indexOf('</think>');
+      thoughtOut += remaining.slice(0, idx);
+      remaining = remaining.slice(idx + '</think>'.length).replace(/^\n/, '');
+      state.webllmInThink = false;
+      contentOut += remaining;
+    } else {
+      thoughtOut += remaining;
+    }
+  }
+
+  return {
+    content: contentOut || undefined,
+    thought: thoughtOut || undefined,
+  };
+}
+
 import { axModelInfoWebLLM } from './info.js';
 import {
   type AxAIWebLLMChatRequest,
@@ -91,7 +154,8 @@ class AxAIWebLLMImpl
   }
 
   createChatReq(
-    req: Readonly<AxInternalChatRequest<AxAIWebLLMModel>>
+    req: Readonly<AxInternalChatRequest<AxAIWebLLMModel>>,
+    options?: Readonly<AxAIServiceOptions>
   ): [AxAPI, AxAIWebLLMChatRequest] {
     const model = req.model;
 
@@ -208,6 +272,10 @@ class AxAIWebLLMImpl
       stop: req.modelConfig?.stopSequences ?? this.config.stopSequences,
       stream: req.modelConfig?.stream ?? this.config.stream,
       n: req.modelConfig?.n ?? this.config.n,
+      // Handle thinking token budget
+      ...(options?.thinkingTokenBudget
+        ? { think: options.thinkingTokenBudget !== 'none' }
+        : {}),
     };
 
     return [apiConfig, reqValue];
@@ -255,10 +323,14 @@ class AxAIWebLLMImpl
         },
       }));
 
+      const rawContent = choice.message.content || '';
+      const extracted = extractThinkTags(rawContent);
+
       return {
         index,
         id: resp.id,
-        content: choice.message.content || '',
+        content: extracted.content || '',
+        thought: extracted.thought,
         functionCalls,
         finishReason,
       };
@@ -278,7 +350,7 @@ class AxAIWebLLMImpl
         type?: 'function';
         function?: { name?: string; arguments?: string };
       }>;
-    };
+    } & WebLLMThinkStreamState;
 
     // Accumulate streaming content
     const choice = resp.choices[0];
@@ -356,11 +428,16 @@ class AxAIWebLLMImpl
       },
     }));
 
+    // Extract think tags from accumulated content
+    const rawContent = ss.content || '';
+    const extracted = extractThinkTags(rawContent);
+
     const results = [
       {
         index: 0,
         id: resp.id,
-        content: ss.content || '',
+        content: extracted.content || '',
+        thought: extracted.thought,
         functionCalls,
         finishReason,
       },
@@ -410,6 +487,8 @@ export class AxAIWebLLM<TModelKey> extends AxBaseAI<
       supportFor: (_model: AxAIWebLLMModel) => ({
         functions: true, // WebLLM supports function calling
         streaming: true, // WebLLM supports streaming
+        hasThinkingBudget: true,
+        hasShowThoughts: true,
         media: {
           images: {
             supported: false,
@@ -434,7 +513,7 @@ export class AxAIWebLLM<TModelKey> extends AxBaseAI<
           supported: false,
           types: [],
         },
-        thinking: false,
+        thinking: true,
         multiTurn: true,
       }),
       options,
