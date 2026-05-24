@@ -226,6 +226,8 @@ class AxAIWebLLMImpl
         stream?: boolean
       ): Promise<TResponse | ReadableStream<TResponse>> => {
         try {
+          console.log('Local call data');
+          console.log(data);
           // Use WebLLM engine's chat.completions.create method
           const response = await this.engine.chat.completions.create({
             ...data,
@@ -258,6 +260,24 @@ class AxAIWebLLMImpl
       model,
       messages,
       ...(tools?.length ? { tools } : {}),
+      // Map responseFormat to WebLLM's response_format.
+      // WebLLM uses { type: 'json_object', schema: '<stringified schema>' }
+      // unlike OpenAI which uses { type: 'json_schema', json_schema: {...} }.
+      ...(req.responseFormat
+        ? {
+            response_format: {
+              type: 'json_object' as const,
+              ...(req.responseFormat.schema
+                ? {
+                    schema:
+                      typeof req.responseFormat.schema === 'string'
+                        ? req.responseFormat.schema
+                        : JSON.stringify(req.responseFormat.schema),
+                  }
+                : {}),
+            },
+          }
+        : {}),
       max_tokens: req.modelConfig?.maxTokens ?? this.config.maxTokens,
       ...(req.modelConfig?.temperature !== undefined
         ? { temperature: req.modelConfig.temperature }
@@ -272,9 +292,13 @@ class AxAIWebLLMImpl
       stop: req.modelConfig?.stopSequences ?? this.config.stopSequences,
       stream: req.modelConfig?.stream ?? this.config.stream,
       n: req.modelConfig?.n ?? this.config.n,
-      // Handle thinking token budget
+      // Handle thinking token budget via WebLLM's enable_thinking parameter
       ...(options?.thinkingTokenBudget
-        ? { think: options.thinkingTokenBudget !== 'none' }
+        ? {
+            extra_body: {
+              enable_thinking: options.thinkingTokenBudget !== 'none',
+            },
+          }
         : {}),
     };
 
@@ -487,6 +511,7 @@ export class AxAIWebLLM<TModelKey> extends AxBaseAI<
       supportFor: (_model: AxAIWebLLMModel) => ({
         functions: true, // WebLLM supports function calling
         streaming: true, // WebLLM supports streaming
+        structuredOutputs: true, // WebLLM supports OpenAI-compatible response_format
         hasThinkingBudget: true,
         hasShowThoughts: true,
         media: {
