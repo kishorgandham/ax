@@ -32,53 +32,6 @@ function extractThinkTags(content: string): {
   };
 }
 
-type WebLLMThinkStreamState = {
-  webllmInThink?: boolean;
-};
-
-/**
- * Processes a streaming chunk, routing <think>...</think> content to the
- * `thought` field and leaving the rest in `content`.
- */
-function processThinkStreamChunk(
-  content: string | undefined,
-  state: WebLLMThinkStreamState
-): { content?: string; thought?: string } {
-  if (!content) return {};
-
-  if (!state.webllmInThink && !content.includes('<think>')) {
-    return { content };
-  }
-
-  let remaining = content;
-  let thoughtOut = '';
-  let contentOut = '';
-
-  if (!state.webllmInThink && remaining.includes('<think>')) {
-    const idx = remaining.indexOf('<think>');
-    contentOut += remaining.slice(0, idx);
-    remaining = remaining.slice(idx + '<think>'.length);
-    state.webllmInThink = true;
-  }
-
-  if (state.webllmInThink) {
-    if (remaining.includes('</think>')) {
-      const idx = remaining.indexOf('</think>');
-      thoughtOut += remaining.slice(0, idx);
-      remaining = remaining.slice(idx + '</think>'.length).replace(/^\n/, '');
-      state.webllmInThink = false;
-      contentOut += remaining;
-    } else {
-      thoughtOut += remaining;
-    }
-  }
-
-  return {
-    content: contentOut || undefined,
-    thought: thoughtOut || undefined,
-  };
-}
-
 import { axModelInfoWebLLM } from './info.js';
 import {
   type AxAIWebLLMChatRequest,
@@ -374,7 +327,7 @@ class AxAIWebLLMImpl
         type?: 'function';
         function?: { name?: string; arguments?: string };
       }>;
-    } & WebLLMThinkStreamState;
+    };
 
     // Accumulate streaming content
     const choice = resp.choices[0];
