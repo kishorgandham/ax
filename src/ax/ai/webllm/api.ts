@@ -225,7 +225,7 @@ class AxAIWebLLMImpl
                     schema:
                       typeof req.responseFormat.schema === 'string'
                         ? req.responseFormat.schema
-                        : JSON.stringify(req.responseFormat.schema),
+                        : JSON.stringify(req.responseFormat.schema.schema),
                   }
                 : {}),
             },
