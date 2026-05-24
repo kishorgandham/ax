@@ -26,8 +26,11 @@ function extractThinkTags(content: string): {
 } {
   const match = content.match(/^<think>([\s\S]*?)<\/think>\n?([\s\S]*)$/);
   if (!match) return { content };
+  // Treat whitespace-only thought as empty (e.g. <think>\n\n</think>
+  // prepended by WebLLM when enable_thinking=false)
+  const thought = match[1]?.trim() || undefined;
   return {
-    thought: match[1] || undefined,
+    thought,
     content: match[2] || undefined,
   };
 }
@@ -179,8 +182,6 @@ class AxAIWebLLMImpl
         stream?: boolean
       ): Promise<TResponse | ReadableStream<TResponse>> => {
         try {
-          console.log('Local call data');
-          console.log(data);
           // Use WebLLM engine's chat.completions.create method
           const response = await this.engine.chat.completions.create({
             ...data,
