@@ -66,6 +66,13 @@ export type AxAIWebLLMChatRequest = {
   logprobs?: boolean;
   top_logprobs?: number;
   n?: number;
+  enable_thinking?: boolean;
+  extra_body?: any;
+  response_format?: {
+    type?: 'text' | 'json_object' | 'grammar' | 'structural_tag';
+    schema?: string;
+    grammar?: string;
+  };
   tools?: Array<{
     type: 'function';
     function: {

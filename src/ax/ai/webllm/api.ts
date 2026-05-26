@@ -28,6 +28,25 @@ import {
   AxAIWebLLMModel,
 } from './types.js';
 
+/**
+ * Extracts <think>...</think> content from a full (non-streaming) response.
+ * Returns thought and cleaned content separately.
+ */
+function extractThinkTags(content: string): {
+  thought?: string;
+  content?: string;
+} {
+  const match = content.match(/^<think>([\s\S]*?)<\/think>\n?([\s\S]*)$/);
+  if (!match) return { content };
+  // Treat whitespace-only thought as empty (e.g. <think>\n\n</think>
+  // prepended by WebLLM when enable_thinking=false)
+  const thought = match[1]?.trim() || undefined;
+  return {
+    thought,
+    content: match[2] || undefined,
+  };
+}
+
 export const axAIWebLLMDefaultConfig = (): AxAIWebLLMConfig =>
   structuredClone({
     model: AxAIWebLLMModel.Llama32_3B_Instruct,
@@ -91,7 +110,8 @@ class AxAIWebLLMImpl
   }
 
   createChatReq(
-    req: Readonly<AxInternalChatRequest<AxAIWebLLMModel>>
+    req: Readonly<AxInternalChatRequest<AxAIWebLLMModel>>,
+    options?: Readonly<AxAIServiceOptions>
   ): [AxAPI, AxAIWebLLMChatRequest] {
     const model = req.model;
 
@@ -194,6 +214,21 @@ class AxAIWebLLMImpl
       model,
       messages,
       ...(tools?.length ? { tools } : {}),
+      ...(req.responseFormat
+        ? {
+            response_format: {
+              type: 'json_object' as const,
+              ...(req.responseFormat.schema
+                ? {
+                    schema:
+                      typeof req.responseFormat.schema === 'string'
+                        ? req.responseFormat.schema
+                        : JSON.stringify(req.responseFormat.schema.schema),
+                  }
+                : {}),
+            },
+          }
+        : {}),
       max_tokens: req.modelConfig?.maxTokens ?? this.config.maxTokens,
       ...(req.modelConfig?.temperature !== undefined
         ? { temperature: req.modelConfig.temperature }
@@ -208,6 +243,14 @@ class AxAIWebLLMImpl
       stop: req.modelConfig?.stopSequences ?? this.config.stopSequences,
       stream: req.modelConfig?.stream ?? this.config.stream,
       n: req.modelConfig?.n ?? this.config.n,
+      // Handle thinking token budget via WebLLM's enable_thinking parameter
+      ...(options?.thinkingTokenBudget
+        ? {
+            extra_body: {
+              enable_thinking: options.thinkingTokenBudget !== 'none',
+            },
+          }
+        : {}),
     };
 
     return [apiConfig, reqValue];
@@ -255,10 +298,14 @@ class AxAIWebLLMImpl
         },
       }));
 
+      const rawContent = choice.message.content || '';
+      const extracted = extractThinkTags(rawContent);
+
       return {
         index,
         id: resp.id,
-        content: choice.message.content || '',
+        content: extracted.content || '',
+        thought: extracted.thought,
         functionCalls,
         finishReason,
       };
@@ -356,11 +403,15 @@ class AxAIWebLLMImpl
       },
     }));
 
+    const rawContent = ss.content || '';
+    const extracted = extractThinkTags(rawContent);
+
     const results = [
       {
         index: 0,
         id: resp.id,
-        content: ss.content || '',
+        content: extracted.content || '',
+        thought: extracted.thought,
         functionCalls,
         finishReason,
       },
@@ -410,6 +461,9 @@ export class AxAIWebLLM<TModelKey> extends AxBaseAI<
       supportFor: (_model: AxAIWebLLMModel) => ({
         functions: true, // WebLLM supports function calling
         streaming: true, // WebLLM supports streaming
+        structuredOutputs: true,
+        hasThinkingBudget: true,
+        hasShowThoughts: true,
         media: {
           images: {
             supported: false,
@@ -434,7 +488,7 @@ export class AxAIWebLLM<TModelKey> extends AxBaseAI<
           supported: false,
           types: [],
         },
-        thinking: false,
+        thinking: true,
         multiTurn: true,
       }),
       options,
