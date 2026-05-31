@@ -31,9 +31,10 @@ describe('axGetSupportedAIModels', () => {
         'reka',
         'grok',
         'webllm',
+        'chrome-ai',
       ])
     );
-    expect(providerNames).toHaveLength(16);
+    expect(providerNames).toHaveLength(17);
   });
 
   it('returns provider grouped model metadata with pricing', () => {

@@ -7,6 +7,8 @@ import {
   type AxAIAzureOpenAIArgs,
 } from './azure-openai/api.js';
 import type { AxAIFeatures } from './base.js';
+import { AxAIChromeAI, type AxAIChromeAIArgs } from './chrome-ai/api.js';
+import type { AxAIChromeAIModel } from './chrome-ai/types.js';
 import { AxAICohere, type AxAICohereArgs } from './cohere/api.js';
 import type { AxAICohereEmbedModel, AxAICohereModel } from './cohere/types.js';
 import { AxAIDeepSeek, type AxAIDeepSeekArgs } from './deepseek/api.js';
@@ -84,7 +86,8 @@ export type AxAIArgs<TModelKey> =
   | AxAIOllamaArgs<TModelKey>
   | AxAIRekaArgs<TModelKey>
   | AxAIGrokArgs<TModelKey>
-  | AxAIWebLLMArgs<TModelKey>;
+  | AxAIWebLLMArgs<TModelKey>
+  | AxAIChromeAIArgs<TModelKey>;
 
 export type AxAIModels =
   | AxAIOpenAIModel
@@ -96,7 +99,8 @@ export type AxAIModels =
   | AxAIMistralModel
   | AxAIDeepSeekModel
   | AxAIGrokModel
-  | AxAIWebLLMModel;
+  | AxAIWebLLMModel
+  | AxAIChromeAIModel;
 
 export type AxAIEmbedModels =
   | AxAIOpenAIEmbedModel
@@ -140,6 +144,7 @@ type InferTModelKey<T> = T extends { models: infer M }
  * - `'reka'` - Reka AI
  * - `'grok'` - xAI Grok
  * - `'webllm'` - WebLLM (browser-based inference)
+ * - `'chrome-ai'` - Chrome built-in AI (Prompt API, Chrome 138+)
  *
  * @param options - Provider-specific configuration. Must include `name` to identify the provider.
  * @param options.name - The provider identifier (see list above)
@@ -277,6 +282,9 @@ export class AxAI<TModelKey = string>
         break;
       case 'webllm':
         this.ai = new AxAIWebLLM<TModelKey>(options);
+        break;
+      case 'chrome-ai':
+        this.ai = new AxAIChromeAI<TModelKey>(options);
         break;
       default:
         throw new Error('Unknown AI');

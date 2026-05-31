@@ -1,5 +1,7 @@
 import { axModelInfoAnthropic } from './anthropic/info.js';
 import { AxAIAnthropicModel } from './anthropic/types.js';
+import { axModelInfoChromeAI } from './chrome-ai/info.js';
+import { AxAIChromeAIModel } from './chrome-ai/types.js';
 import { axModelInfoCohere } from './cohere/info.js';
 import { AxAICohereModel } from './cohere/types.js';
 import { axModelInfoDeepSeek } from './deepseek/info.js';
@@ -189,6 +191,12 @@ const axAIModelCatalogProviderDefinitions = {
     defaultModel: AxAIWebLLMModel.Llama32_3B_Instruct,
     isDynamic: false,
     modelInfo: axModelInfoWebLLM,
+  },
+  'chrome-ai': {
+    displayName: 'Chrome AI',
+    defaultModel: AxAIChromeAIModel.GeminiNano,
+    isDynamic: false,
+    modelInfo: axModelInfoChromeAI,
   },
 } satisfies Record<
   AxAIModelCatalogProviderName,

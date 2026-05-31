@@ -252,6 +252,23 @@ import {
   axGetSupportedAIModels,
 } from './ai/catalog.js';
 import {
+  AxAIChromeAI,
+  type AxAIChromeAIArgs,
+  axAIChromeAICreativeConfig,
+  axAIChromeAIDefaultConfig,
+} from './ai/chrome-ai/api.js';
+import { axModelInfoChromeAI } from './ai/chrome-ai/info.js';
+import {
+  type AxAIChromeAIChatRequest,
+  type AxAIChromeAIChatResponse,
+  type AxAIChromeAIChatResponseDelta,
+  type AxAIChromeAIConfig,
+  type AxAIChromeAIEmbedModel,
+  type AxAIChromeAIEmbedRequest,
+  type AxAIChromeAIEmbedResponse,
+  AxAIChromeAIModel,
+} from './ai/chrome-ai/types.js';
+import {
   AxAICohere,
   type AxAICohereArgs,
   axAICohereCreativeConfig,
@@ -1047,6 +1064,8 @@ export { AxAIAnthropic };
 export { AxAIAnthropicModel };
 export { AxAIAnthropicVertexModel };
 export { AxAIAzureOpenAI };
+export { AxAIChromeAI };
+export { AxAIChromeAIModel };
 export { AxAICohere };
 export { AxAICohereEmbedModel };
 export { AxAICohereModel };
@@ -1167,6 +1186,8 @@ export { axAIAzureOpenAIBestConfig };
 export { axAIAzureOpenAICreativeConfig };
 export { axAIAzureOpenAIDefaultConfig };
 export { axAIAzureOpenAIFastConfig };
+export { axAIChromeAICreativeConfig };
+export { axAIChromeAIDefaultConfig };
 export { axAICohereCreativeConfig };
 export { axAICohereDefaultConfig };
 export { axAIDeepSeekCodeConfig };
@@ -1252,6 +1273,7 @@ export { axMapOpenAIChatAudioResponse };
 export { axMapOpenAIInputAudioPart };
 export { axMergeChatAudioConfig };
 export { axModelInfoAnthropic };
+export { axModelInfoChromeAI };
 export { axModelInfoCohere };
 export { axModelInfoDeepSeek };
 export { axModelInfoGoogleGemini };
@@ -1334,6 +1356,14 @@ export type { AxAIAnthropicWebSearchTool };
 export type { AxAIArgs };
 export type { AxAIAzureOpenAIArgs };
 export type { AxAIAzureOpenAIConfig };
+export type { AxAIChromeAIArgs };
+export type { AxAIChromeAIChatRequest };
+export type { AxAIChromeAIChatResponse };
+export type { AxAIChromeAIChatResponseDelta };
+export type { AxAIChromeAIConfig };
+export type { AxAIChromeAIEmbedModel };
+export type { AxAIChromeAIEmbedRequest };
+export type { AxAIChromeAIEmbedResponse };
 export type { AxAICohereArgs };
 export type { AxAICohereChatRequest };
 export type { AxAICohereChatRequestToolResults };
